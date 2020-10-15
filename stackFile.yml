@@ -1,0 +1,56 @@
+version: '1.0'
+services:
+  - name: mssql
+    type: docker
+    image: microsoft/mssql-server-linux
+    version: 2017-latest
+    ports:
+      - 1433
+    remoteAccess: false
+    env:
+      ACCEPT_EULA: Y
+      MSSQL_SA_PASSWORD: SuperPassword2020!
+      MSSQL_PID: Express
+    deployTo:
+      - sqlpad
+
+  - name: sqlpad
+    type: docker
+    image: sqlpad/sqlpad
+    version: 5
+    ports:
+      - 3000
+    remoteAccess: false
+    env:
+      SQLPAD_ADMIN: null
+      SQLPAD_ADMIN_PASSWORD: null
+      SQLPAD_APP_LOG_LEVEL: info
+      SQLPAD_WEB_LOG_LEVEL: warn
+      SQLPAD_CONNECTIONS__sqlserverdemo__name: SQL Server Demo
+      SQLPAD_CONNECTIONS__sqlserverdemo__driver: sqlserver
+      SQLPAD_CONNECTIONS__sqlserverdemo__host: "{{=service('mssql').getAppAlias()}}"
+      SQLPAD_CONNECTIONS__sqlserverdemo__database: master
+      SQLPAD_CONNECTIONS__sqlserverdemo__username: sa
+      SQLPAD_CONNECTIONS__sqlserverdemo__password: "{{=service('mssql').getEnv('MSSQL_SA_PASSWORD')}}"
+    volumes:
+      - directory: /var/lib/sqlpad
+    deployTo:
+      - sqlpad
+
+  - name: web
+    type: nginx
+    version: 1.19
+    ports:
+      - 80
+      - 443
+    remoteAccess: true
+    serviceFiles:
+      - name: sqlpad
+    deployTo:
+      - sqlpad
+
+hosts:
+  - name: sqlpad
+    requirements:
+      cores: 1
+      memory: 2
